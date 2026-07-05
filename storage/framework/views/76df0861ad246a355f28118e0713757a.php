@@ -1,0 +1,47 @@
+<div class="grid grid-cols-2 gap-3">
+  <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">اسم الشركة</label>
+    <input name="company_name" x-model="form.company_name" placeholder="اسم العميل/الشركة" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">المنصة</label>
+    <select name="platform" x-model="form.platform" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"><?php $__currentLoopData = $platforms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option><?php echo e($p); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">التاريخ</label>
+    <input name="plan_date" type="date" x-model="form.plan_date" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">التوقيت</label>
+    <input name="plan_time" type="time" x-model="form.plan_time" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">نوع المحتوى</label>
+    <select name="content_type" x-model="form.content_type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"><?php $__currentLoopData = $contentTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option><?php echo e($c); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">نوع المنشور</label>
+    <select name="post_type" x-model="form.post_type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"><?php $__currentLoopData = $postTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option><?php echo e($pt); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">الحالة</label>
+    <select name="status" x-model="form.status" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"><?php $__currentLoopData = $statuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option><?php echo e($s); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+  <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">المصمم المسؤول</label>
+    <select name="assigned_to" x-model="form.assigned_to" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"><?php $__currentLoopData = $assignees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($a->id); ?>"><?php echo e($a->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+</div>
+<div><label class="text-xs font-semibold text-muted mb-1 block">محتوى التصميم</label>
+  <input name="design_content" x-model="form.design_content" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+<div><label class="text-xs font-semibold text-muted mb-1 block">نص التصميم</label>
+  <input name="design_text" x-model="form.design_text" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+<div><label class="text-xs font-semibold text-muted mb-1 block">الكابشن</label>
+  <textarea name="caption" x-model="form.caption" rows="2" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm resize-none"></textarea></div>
+<div><label class="text-xs font-semibold text-muted mb-1 block">نص المنشور</label>
+  <textarea name="post_text" x-model="form.post_text" rows="2" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm resize-none"></textarea></div>
+<div><label class="text-xs font-semibold text-muted mb-1 block">ملاحظات</label>
+  <input name="notes" x-model="form.notes" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+<div class="grid grid-cols-2 gap-3">
+  <div><label class="text-xs font-semibold text-muted mb-1 block">رابط مرجعي</label>
+    <input name="reference_link" type="url" x-model="form.reference_link" placeholder="https://" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">صورة/ملف مرجعي</label>
+    <input name="reference_file" type="file" class="w-full text-xs file:bg-brand file:text-white file:border-0 file:rounded-lg file:px-3 file:py-2 file:ml-2 file:cursor-pointer bg-canvas border border-line rounded-xl px-2 py-2"></div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+  <div><label class="text-xs font-semibold text-muted mb-1 block">نوع العمل (للنقاط)</label>
+    <select name="work_type" x-model="form.work_type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
+      <option value="">— بدون احتساب —</option>
+      <?php $__currentLoopData = $workTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $wt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($wt->key); ?>"><?php echo e($wt->label); ?> (<?php echo e($wt->points); ?>)</option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+    </select></div>
+  <div><label class="text-xs font-semibold text-muted mb-1 block">مشرف متابِع</label>
+    <select name="supervisor_id" x-model="form.supervisor_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
+      <option value="">— بدون —</option>
+      <?php $__currentLoopData = $supervisors; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sv): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($sv->id); ?>"><?php echo e($sv->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+    </select></div>
+</div>
+<?php /**PATH D:\markting\promanage\resources\views/content/_fields.blade.php ENDPATH**/ ?>
