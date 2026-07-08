@@ -22,8 +22,8 @@ class TaskController extends Controller
             'date'    => $request->query('date'),
         ];
 
-        $tasks = Task::with(['user','supervisor'])->visibleTo($user)->forMonth($month)
-            ->when($filters['user_id'], fn ($q) => $q->where('user_id', $filters['user_id']))
+        $tasks = Task::with(['user','supervisor','assignees'])->visibleTo($user)->forMonth($month)
+            ->when($filters['user_id'], fn ($q) => $q->whereHas('assignees', fn ($a) => $a->where('users.id', $filters['user_id'])))
             ->when($filters['type'], fn ($q) => $q->where('type', $filters['type']))
             ->when($filters['stage'], fn ($q) => $q->where('stage', $filters['stage']))
             ->when($filters['date'], fn ($q) => $q->whereDate('due_date', $filters['date']))
@@ -56,13 +56,15 @@ class TaskController extends Controller
     {
         $this->authorize('create', Task::class);
         $task = Task::create($this->payload($request));
+        $this->syncAssignees($task, $request->input('assignees', []));
+        $task->load('assignees');
 
-        // إشعارات: الموظف (أولوية عالية) + المشرف المتابِع + مدير النظام
+        // إشعار كل المصمّمين المشاركين (أولوية عالية) + المشرف المتابِع + مدير النظام
         $admins = \App\Models\User::role('admin')->get();
-        \App\Support\Notifier::send([$task->user], new \App\Notifications\ActivityNotification(
+        \App\Support\Notifier::send($task->assignees, new \App\Notifications\ActivityNotification(
             'مهمة جديدة مُسندة إليك', "أُسندت إليك مهمة: {$task->title}", route('tasks.index'), 'high'));
         \App\Support\Notifier::send(collect([$task->supervisor])->merge($admins), new \App\Notifications\ActivityNotification(
-            'مهمة جديدة', "أُنشئت مهمة «{$task->title}» للموظف {$task->user->name}", route('tasks.index')));
+            'مهمة جديدة', "أُنشئت مهمة «{$task->title}» ({$task->assignees->count()} مصمّم)", route('tasks.index')));
 
         return back()->with('ok', 'تمت إضافة المهمة.');
     }
@@ -71,7 +73,20 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
         $task->update($this->payload($request));
+        $this->syncAssignees($task, $request->input('assignees', []));
         return back()->with('ok', 'تم حفظ المهمة.');
+    }
+
+    /** مزامنة المصمّمين المشاركين مع نوع عمل كلٍّ منهم؛ أول مصمّم يُعتبر القائد (user_id). */
+    private function syncAssignees(Task $task, array $assignees): void
+    {
+        $map = [];
+        foreach ($assignees as $a) {
+            if (! empty($a['user_id'])) {
+                $map[(int) $a['user_id']] = ['type' => $a['type'] ?? null];
+            }
+        }
+        $task->assignees()->sync($map);
     }
 
     public function destroy(Task $task)
@@ -101,7 +116,7 @@ class TaskController extends Controller
         if (in_array($data['stage'], ['جاهز', 'منشور'], true)) {
             $admins = \App\Models\User::role('admin')->get();
             \App\Support\Notifier::send(collect([$task->supervisor])->merge($admins), new \App\Notifications\ActivityNotification(
-                'إنجاز مهمة', "أنجز {$task->user->name} مهمة «{$task->title}» ({$data['stage']})", route('tasks.index'), 'high'));
+                'إنجاز مهمة', "أنجز " . (optional($task->user)->name ?? 'المصمم') . " مهمة «{$task->title}» ({$data['stage']})", route('tasks.index'), 'high'));
         }
 
         return back()->with('ok', 'تم تحديث حالة المهمة.');
@@ -109,12 +124,15 @@ class TaskController extends Controller
 
     private function payload(TaskRequest $request): array
     {
+        $assignees = $request->input('assignees', []);
+        $lead = $assignees[0] ?? [];
+
         return [
             'title'       => $request->title,
             'description' => $request->description,
-            'type'        => $request->type,
+            'type'        => $lead['type'] ?? 'post_story',
             'stage'       => $request->stage,
-            'user_id'     => $request->user_id,
+            'user_id'     => $lead['user_id'] ?? null,
             'supervisor_id' => $request->supervisor_id ?: null,
             'due_date'    => $request->due_date,
             'is_late'     => $request->boolean('is_late'),

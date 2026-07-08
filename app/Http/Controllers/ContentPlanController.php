@@ -51,19 +51,28 @@ class ContentPlanController extends Controller
     {
         $this->authorize('create', ContentPlan::class);
         $data = $request->validated();
+        $designers = $data['designers'] ?? [];
+        unset($data['designers']);
         $data = $this->handleReference($request, $data);
         $data['day_name'] = $this->dayName($data['plan_date']);
         $data['approval_state'] = 'draft';
-        ContentPlan::create($data);
 
-        if (! empty($data['assigned_to'])) {
-            $designer = \App\Models\User::find($data['assigned_to']);
-            $supervisor = ! empty($data['supervisor_id']) ? \App\Models\User::find($data['supervisor_id']) : null;
-            \App\Support\Notifier::send([$designer], new \App\Notifications\ActivityNotification(
-                'عنصر محتوى جديد', "أُسند إليك عنصر في خطة {$data['platform']}", route('content.index'), 'high'));
-            \App\Support\Notifier::send([$supervisor], new \App\Notifications\ActivityNotification(
-                'عنصر محتوى جديد', "عنصر جديد بمتابعتك في خطة {$data['platform']}", route('content.index')));
+        // أول مصمّم = القائد (assigned_to) ونوع العنصر
+        if ($designers) {
+            $data['assigned_to'] = (int) $designers[0]['user_id'];
+            $data['work_type'] = $designers[0]['work_type'] ?? ($data['work_type'] ?? null);
         }
+
+        $plan = ContentPlan::create($data);
+        $this->syncDesigners($plan, $designers);
+        $plan->load('designers', 'supervisor');
+
+        // إشعار أول مصمّم (صاحب الدور) + المشرف المتابِع
+        $first = $plan->currentDesigner();
+        \App\Support\Notifier::send([$first], new \App\Notifications\ActivityNotification(
+            'عنصر محتوى جديد', "دورك بدأ في عنصر خطة {$plan->platform}", route('content.index'), 'high'));
+        \App\Support\Notifier::send([$plan->supervisor], new \App\Notifications\ActivityNotification(
+            'عنصر محتوى جديد', "عنصر جديد بمتابعتك في خطة {$plan->platform}", route('content.index')));
 
         return back()->with('ok', 'تمت إضافة صف للخطة.');
     }
@@ -72,10 +81,81 @@ class ContentPlanController extends Controller
     {
         $this->authorize('update', $contentPlan);
         $data = $request->validated();
+        $designers = $data['designers'] ?? null;
+        unset($data['designers']);
         $data = $this->handleReference($request, $data);
         $data['day_name'] = $this->dayName($data['plan_date']);
+
+        if (! empty($designers)) {
+            $data['assigned_to'] = (int) $designers[0]['user_id'];
+            $data['work_type'] = $designers[0]['work_type'] ?? ($data['work_type'] ?? null);
+        }
+
         $contentPlan->update($data);
+
+        if ($designers !== null) {
+            $this->syncDesigners($contentPlan, $designers);
+        }
+
         return back()->with('ok', 'تم حفظ الصف.');
+    }
+
+    /** مزامنة المصمّمين بالترتيب: الأول «قيد العمل» والبقية «بانتظار الدور». */
+    private function syncDesigners(ContentPlan $plan, array $designers): void
+    {
+        $map = [];
+        $pos = 1;
+        foreach ($designers as $d) {
+            if (empty($d['user_id'])) {
+                continue;
+            }
+            $map[(int) $d['user_id']] = [
+                'position'    => $pos,
+                'work_type'   => $d['work_type'] ?? null,
+                'step_status' => $pos === 1 ? 'قيد العمل' : 'بانتظار الدور',
+            ];
+            $pos++;
+        }
+        if ($map) {
+            $plan->designers()->sync($map);
+        }
+    }
+
+    /** تسليم العمل للمصمّم التالي في الترتيب. */
+    public function advanceStep(Request $request, ContentPlan $contentPlan)
+    {
+        $user = $request->user();
+        $contentPlan->load('designers');
+        $current = $contentPlan->currentDesigner();
+
+        // يسمح به لصاحب الدور الحالي أو للمدراء
+        abort_unless($user->can('update content') || ($current && $current->id === $user->id), 403);
+
+        if (! $current) {
+            return back()->with('ok', 'كل الخطوات مكتملة.');
+        }
+
+        // إكمال الخطوة الحالية
+        $contentPlan->designers()->updateExistingPivot($current->id, [
+            'step_status' => 'مكتمل', 'done_at' => now(),
+        ]);
+
+        // تفعيل التالي أو إشعار المشرف بالاكتمال
+        $next = $contentPlan->designers
+            ->where('pivot.position', '>', $current->pivot->position)
+            ->firstWhere('pivot.step_status', 'بانتظار الدور');
+
+        if ($next) {
+            $contentPlan->designers()->updateExistingPivot($next->id, ['step_status' => 'قيد العمل']);
+            \App\Support\Notifier::send([$next], new \App\Notifications\ActivityNotification(
+                'استلمت عملاً', "سلّمك {$current->name} عنصر خطة {$contentPlan->platform} — دورك الآن", route('content.index'), 'high'));
+        } else {
+            $contentPlan->load('supervisor');
+            \App\Support\Notifier::send([$contentPlan->supervisor], new \App\Notifications\ActivityNotification(
+                'اكتمل عنصر محتوى', "أنجز الفريق عنصر خطة {$contentPlan->platform}", route('content.index'), 'high'));
+        }
+
+        return back()->with('ok', $next ? "تم التسليم إلى {$next->name}." : 'أنجزت آخر خطوة — تم إشعار المشرف.');
     }
 
     /** اعتماد/مراجعة الخطة لشهر النشط فقط. */

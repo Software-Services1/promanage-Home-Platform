@@ -30,6 +30,15 @@ class ContentPlanRequest extends FormRequest
             'assigned_to'    => ['nullable', 'exists:users,id'],
             'work_type'      => ['nullable', 'exists:task_types,key'],
             'supervisor_id'  => ['nullable', 'exists:users,id'],
+            // مصمّمون مرتّبون، لكلٍّ نوع عمله (اختياري بالكامل)
+            'designers'            => ['nullable', 'array'],
+            'designers.*.user_id'  => ['required_with:designers', 'exists:users,id'],
+            'designers.*.work_type'=> ['nullable', 'exists:task_types,key'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['designers.*.user_id.required_with' => 'اختر المصمّم في كل صفّ.'];
     }
 }

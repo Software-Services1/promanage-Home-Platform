@@ -19,9 +19,25 @@ class Task extends Model
         return ['due_date' => 'date', 'is_late' => 'boolean', 'is_creative' => 'boolean', 'attachments' => 'array'];
     }
 
+    protected static function booted(): void
+    {
+        // ضمان وجود المنفّذ الرئيسي ضمن المشاركين (يُغطّي الإنشاء المباشر كالبذور)
+        static::created(function (Task $task) {
+            if ($task->user_id && $task->assignees()->count() === 0) {
+                $task->assignees()->attach($task->user_id, ['type' => null]);
+            }
+        });
+    }
+
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
     public function supervisor(): BelongsTo { return $this->belongsTo(User::class, 'supervisor_id'); }
     public function contentPlan(): BelongsTo { return $this->belongsTo(ContentPlan::class); }
+
+    /** المصمّمون المشاركون في المهمة، ولكلٍّ نوع عمله (pivot.type). */
+    public function assignees(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_user')->withPivot('type')->withTimestamps();
+    }
 
     public function scopeForMonth(Builder $q, string $month): Builder
     {
@@ -38,7 +54,9 @@ class Task extends Model
             return $q;
         }
         return $q->where(function (Builder $w) use ($u) {
-            $w->where('user_id', $u->id)->orWhere('supervisor_id', $u->id);
+            $w->whereHas('assignees', fn ($a) => $a->where('users.id', $u->id))
+              ->orWhere('user_id', $u->id)
+              ->orWhere('supervisor_id', $u->id);
         });
     }
 

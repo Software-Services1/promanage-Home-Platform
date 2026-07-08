@@ -8,7 +8,7 @@
   $canManageTasks = auth()->user()->can('update tasks');
   $canCreateTasks = auth()->user()->can('create tasks');
 @endphp
-<div x-data="{ add:false, edit:null, viewT:null, form:{}, vt:{}, flt: {{ collect($filters)->filter(fn($v)=>$v!==null && $v!=='')->count() ? 'true':'false' }} }">
+<div x-data="{ add:false, edit:null, viewT:null, form:{}, vt:{}, aAdd:[{user_id:'',type:''}], flt: {{ collect($filters)->filter(fn($v)=>$v!==null && $v!=='')->count() ? 'true':'false' }} }">
   <div class="flex items-center gap-2 mb-4 flex-wrap">
     <span class="inline-flex items-center gap-2 bg-brand/10 text-brand text-sm font-bold px-3 py-1.5 rounded-xl">
       <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 11l3 3 8-8"/></svg>
@@ -20,7 +20,7 @@
       @php $fcount = collect($filters)->filter(fn($v)=>$v!==null && $v!=='')->count(); @endphp
       @if($fcount)<span class="bg-brand text-white text-[10px] rounded-full w-5 h-5 grid place-items-center tnum">{{ $fcount }}</span>@endif
     </button>
-    @if($canCreateTasks)<button x-on:click="add=true" class="inline-flex items-center gap-2 bg-brand hover:bg-brandd text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lift">
+    @if($canCreateTasks)<button x-on:click="aAdd=[{user_id:'',type:''}]; add=true" class="inline-flex items-center gap-2 bg-brand hover:bg-brandd text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lift">
       <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> مهمة جديدة</button>@endif
   </div>
 
@@ -63,11 +63,15 @@
                 <span class="text-[10px] font-bold tnum text-brand bg-violet-50 rounded-lg px-1.5 py-0.5 shrink-0">{{ $t->computed_points }}</span>
               </div>
               @if($t->description)<div class="text-[11px] text-muted mt-1 line-clamp-2">{{ \Illuminate\Support\Str::limit($t->description, 90) }}</div>@endif
-              <div class="text-[11px] text-muted mt-1.5">{{ $t->typeLabel() }} • {{ $t->user->name }}</div>
+              @php $asgNames = $t->assignees->pluck('name')->join('، '); @endphp
+              <div class="text-[11px] text-muted mt-1.5 flex items-center gap-1">
+                <svg viewBox="0 0 24 24" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="truncate">{{ $asgNames ?: optional($t->user)->name }}</span>
+              </div>
               @if($t->supervisor)<div class="text-[10px] text-brand mt-0.5 inline-flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg>متابعة: {{ $t->supervisor->name }}</div>@endif
               @if(! $canManageTasks)
                 <button type="button" class="text-[10px] text-brand font-semibold mt-1"
-                  x-on:click="viewT={{ $t->id }}; vt={ title:@js($t->title), description:@js($t->description), type:@js($t->typeLabel()), stage:@js($t->stage), assignee:@js($t->user->name), due:@js(optional($t->due_date)->format('Y-m-d')), points:'{{ $t->computed_points }}', late:{{ $t->is_late?'true':'false' }}, creative:{{ $t->is_creative?'true':'false' }} }">استعراض التفاصيل</button>
+                  x-on:click="viewT={{ $t->id }}; vt={ title:@js($t->title), description:@js($t->description), type:@js($t->typeLabel()), stage:@js($t->stage), assignee:@js($asgNames ?: optional($t->user)->name), due:@js(optional($t->due_date)->format('Y-m-d')), points:'{{ $t->computed_points }}', late:{{ $t->is_late?'true':'false' }}, creative:{{ $t->is_creative?'true':'false' }} }">استعراض التفاصيل</button>
               @endif
               <div class="flex items-center gap-2 mt-2 flex-wrap">
                 <span class="text-[10px] px-2 py-0.5 rounded-md {{ $stageColor[$stage] ?? 'bg-gray-100' }}">{{ $t->stage }}</span>
@@ -75,10 +79,10 @@
                 @if($t->is_creative)<span class="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 text-golddk">إبداعي</span>@endif
                 @if($canManageTasks)
                   <button type="button" class="text-[10px] text-brand font-semibold mr-auto"
-                    x-on:click="edit={{ $t->id }}; form={ id:{{ $t->id }}, title:@js($t->title), description:@js($t->description), type:@js($t->type), stage:@js($t->stage), user_id:{{ $t->user_id }}, supervisor_id:{{ $t->supervisor_id ?? "null" }}, due_date:@js(optional($t->due_date)->format('Y-m-d')), is_late:{{ $t->is_late?'true':'false' }}, is_creative:{{ $t->is_creative?'true':'false' }} }">تعديل</button>
+                    x-on:click="edit={{ $t->id }}; form={ id:{{ $t->id }}, title:@js($t->title), description:@js($t->description), stage:@js($t->stage), supervisor_id:{{ $t->supervisor_id ?? "null" }}, due_date:@js(optional($t->due_date)->format('Y-m-d')), is_late:{{ $t->is_late?'true':'false' }}, is_creative:{{ $t->is_creative?'true':'false' }}, assignees:@js($t->assignees->map(fn($a)=>['user_id'=>(string)$a->id,'type'=>$a->pivot->type ?: $t->type])->values()) }">تعديل</button>
                 @endif
               </div>
-              @if(! $canManageTasks && $t->user_id === auth()->id())
+              @if(! $canManageTasks && $t->assignees->contains('id', auth()->id()))
                 <form method="POST" action="{{ route('tasks.status',$t) }}" class="mt-2">@csrf
                   <select name="stage" onchange="this.form.submit()" class="w-full text-xs bg-canvas border border-line rounded-lg px-2 py-1.5 outline-none focus:border-brand">
                     @foreach(['تصميم','تنفيذ','مراجعة','جاهز'] as $o)<option @selected($t->stage===$o)>{{ $o }}</option>@endforeach
@@ -120,21 +124,36 @@
       <div><label class="text-xs font-semibold text-muted mb-1 block">الوصف</label>
         <textarea name="description" rows="3" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm resize-none"></textarea></div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-xs font-semibold text-muted mb-1 block">النوع</label>
-          <select name="type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
-            @foreach($taskTypes as $tt)<option value="{{ $tt->key }}">{{ $tt->label }} ({{ $tt->points }})</option>@endforeach
-          </select></div>
         <div><label class="text-xs font-semibold text-muted mb-1 block">المرحلة</label>
           <select name="stage" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($stages as $s)<option>{{ $s }}</option>@endforeach</select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">الموظف</label>
-          <select name="user_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($assignees as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach</select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">مشرف متابِع (اختياري)</label>
+        <div><label class="text-xs font-semibold text-muted mb-1 block">تاريخ التسليم</label>
+          <input name="due_date" type="date" value="{{ $month }}-01" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+        <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">مشرف متابِع (اختياري)</label>
           <select name="supervisor_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
             <option value="">— بدون —</option>
             @foreach($supervisors as $sv)<option value="{{ $sv->id }}">{{ $sv->name }}</option>@endforeach
           </select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">تاريخ التسليم</label>
-          <input name="due_date" type="date" value="{{ $month }}-01" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+      </div>
+      <div class="bg-canvas/60 rounded-xl p-3 border border-line">
+        <label class="text-xs font-bold text-ink mb-2 block">المصمّمون ونوع عمل كلٍّ منهم</label>
+        <div class="space-y-2">
+          <template x-for="(row,i) in aAdd" :key="i">
+            <div class="flex gap-2 items-center">
+              <select :name="`assignees[${i}][user_id]`" x-model="row.user_id" required class="flex-1 min-w-0 bg-white border border-line rounded-lg px-2 py-2 text-sm">
+                <option value="">المصمم</option>
+                @foreach($assignees as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach
+              </select>
+              <select :name="`assignees[${i}][type]`" x-model="row.type" required class="flex-1 min-w-0 bg-white border border-line rounded-lg px-2 py-2 text-sm">
+                <option value="">نوع العمل</option>
+                @foreach($taskTypes as $tt)<option value="{{ $tt->key }}">{{ $tt->label }} ({{ $tt->points }})</option>@endforeach
+              </select>
+              <button type="button" x-show="aAdd.length>1" x-on:click="aAdd.splice(i,1)" class="w-8 h-8 shrink-0 rounded-lg grid place-items-center text-rose-500 hover:bg-rose-50">
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+          </template>
+        </div>
+        <button type="button" x-on:click="aAdd.push({user_id:'',type:''})" class="text-brand text-xs font-bold mt-2 inline-flex items-center gap-1">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> إضافة مصمّم</button>
       </div>
       <div class="flex gap-4">
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_late" value="1" class="accent-brand w-4 h-4"> متأخر</label>
@@ -158,21 +177,36 @@
       <div><label class="text-xs font-semibold text-muted mb-1 block">الوصف</label>
         <textarea name="description" x-model="form.description" rows="3" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm resize-none"></textarea></div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-xs font-semibold text-muted mb-1 block">النوع</label>
-          <select name="type" x-model="form.type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
-            @foreach($taskTypes as $tt)<option value="{{ $tt->key }}">{{ $tt->label }} ({{ $tt->points }})</option>@endforeach
-          </select></div>
         <div><label class="text-xs font-semibold text-muted mb-1 block">المرحلة</label>
           <select name="stage" x-model="form.stage" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($stages as $s)<option>{{ $s }}</option>@endforeach</select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">الموظف</label>
-          <select name="user_id" x-model="form.user_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($assignees as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach</select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">مشرف متابِع</label>
+        <div><label class="text-xs font-semibold text-muted mb-1 block">تاريخ التسليم</label>
+          <input name="due_date" type="date" x-model="form.due_date" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+        <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">مشرف متابِع</label>
           <select name="supervisor_id" x-model="form.supervisor_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
             <option value="">— بدون —</option>
             @foreach($supervisors as $sv)<option value="{{ $sv->id }}">{{ $sv->name }}</option>@endforeach
           </select></div>
-        <div><label class="text-xs font-semibold text-muted mb-1 block">تاريخ التسليم</label>
-          <input name="due_date" type="date" x-model="form.due_date" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
+      </div>
+      <div class="bg-canvas/60 rounded-xl p-3 border border-line">
+        <label class="text-xs font-bold text-ink mb-2 block">المصمّمون ونوع عمل كلٍّ منهم</label>
+        <div class="space-y-2">
+          <template x-for="(row,i) in (form.assignees || [])" :key="i">
+            <div class="flex gap-2 items-center">
+              <select :name="`assignees[${i}][user_id]`" x-model="row.user_id" required class="flex-1 min-w-0 bg-white border border-line rounded-lg px-2 py-2 text-sm">
+                <option value="">المصمم</option>
+                @foreach($assignees as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach
+              </select>
+              <select :name="`assignees[${i}][type]`" x-model="row.type" required class="flex-1 min-w-0 bg-white border border-line rounded-lg px-2 py-2 text-sm">
+                <option value="">نوع العمل</option>
+                @foreach($taskTypes as $tt)<option value="{{ $tt->key }}">{{ $tt->label }} ({{ $tt->points }})</option>@endforeach
+              </select>
+              <button type="button" x-show="form.assignees.length>1" x-on:click="form.assignees.splice(i,1)" class="w-8 h-8 shrink-0 rounded-lg grid place-items-center text-rose-500 hover:bg-rose-50">
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+          </template>
+        </div>
+        <button type="button" x-on:click="form.assignees=(form.assignees||[]); form.assignees.push({user_id:'',type:''})" class="text-brand text-xs font-bold mt-2 inline-flex items-center gap-1">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> إضافة مصمّم</button>
       </div>
       <div class="flex gap-4">
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_late" value="1" x-model="form.is_late" class="accent-brand w-4 h-4"> متأخر</label>

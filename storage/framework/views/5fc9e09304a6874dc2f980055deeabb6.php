@@ -15,7 +15,7 @@
   $canUpdate  = auth()->user()->can('update content');
   $canDelete  = auth()->user()->can('delete content');
   $canContribute = auth()->user()->can('add content note') || auth()->user()->can('update content status') || auth()->user()->can('upload design');
-  $addSeed = "form={ platform:'إنستقرام', company_name:'', plan_date:'".$month."-01', plan_time:'19:00', content_type:'تعليمي', post_type:'منشور', status:'فكرة', assigned_to:null, design_content:'', design_text:'', caption:'', post_text:'', reference_link:'', notes:'', work_type:'', supervisor_id:null }; add=true";
+  $addSeed = "form={ platform:'إنستقرام', company_name:'', plan_date:'".$month."-01', plan_time:'19:00', content_type:'تعليمي', post_type:'منشور', status:'فكرة', assigned_to:null, design_content:'', design_text:'', caption:'', post_text:'', reference_link:'', notes:'', work_type:'', supervisor_id:null, designers:[{user_id:'',work_type:''}] }; add=true";
 ?>
 <div x-data="{ add:false, reject:false, edit:null, view:null, form:{}, vrow:{} }">
   <div class="flex items-center gap-2 mb-3 flex-wrap">

@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/content/{contentPlan}', [ContentPlanController::class, 'update'])->name('content.update');
     Route::delete('/content/{contentPlan}', [ContentPlanController::class, 'destroy'])->name('content.destroy');
     Route::post('/content/{contentPlan}/contribute', [ContentPlanController::class, 'contribute'])->name('content.contribute');
+    Route::post('/content/{contentPlan}/advance', [ContentPlanController::class, 'advanceStep'])->name('content.advance');
     Route::post('/content/{contentPlan}/design', [ContentPlanController::class, 'uploadDesign'])->name('content.design');
     Route::post('/content/approve', [ContentPlanController::class, 'approve'])->name('content.approve');
     Route::post('/content/bulk-approve', [ContentPlanController::class, 'bulkApprove'])->name('content.bulkApprove');

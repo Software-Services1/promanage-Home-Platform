@@ -10,18 +10,23 @@ use App\Models\TaskType;
 use App\Models\User;
 
 /**
- * محرك احتساب النقاط (مقسّم حسب الشهر).
- *  المصادر: المهام (بحسب نوعها) + عمليات الصيانة المكتملة + صفوف خطة المحتوى (بحسب نوع العمل).
- *  نقاط الإشراف ديناميكية لكل مشرف (supervisor_share٪) وبوضعين: auto أو assigned.
+ * محرك احتساب النقاط (مقسّم حسب الشهر) مع تخزين مؤقت داخل الطلب للأداء.
+ *  - المهام: عدّة مصمّمين، لكلٍّ نوع عمله (task_user.type).
+ *  - خطة المحتوى: عدّة مصمّمين مرتّبين، لكلٍّ نوع عمله، وتُحتسب نقاطه عند إكمال خطوته.
+ *  - نقاط الإشراف ديناميكية لكل مشرف وبوضعين (auto/assigned).
  */
 class PointsService
 {
-    /** حالات صف الخطة التي تُحتسب عندها النقاط (اكتمل التصميم). */
     public const CREDITED_CONTENT_STATUSES = ['جاهز للنشر', 'مجدول في النشر التلقائي', 'تم النشر'];
 
-    public function taskPoints(Task $task): float
+    private array $memoDirect = [];
+    private ?array $memoDesignersTotal = [];
+
+    /* ---------- المهام ---------- */
+
+    private function typePointsInTask(Task $task, ?string $typeKey): float
     {
-        $def = TaskType::map()[$task->type] ?? null;
+        $def = TaskType::map()[$typeKey] ?? null;
         if (! $def) {
             return 0;
         }
@@ -38,36 +43,89 @@ class PointsService
         return $points;
     }
 
-    /** نقاط صف خطة المحتوى (بحسب نوع العمل) — تُحتسب عند اكتمال حالته. */
-    public function contentPoints(ContentPlan $plan): float
+    public function taskPointsForUser(Task $task, int $userId): float
     {
-        if (! $plan->work_type || ! in_array($plan->status, self::CREDITED_CONTENT_STATUSES, true)) {
-            return 0;
+        $a = $task->relationLoaded('assignees') ? $task->assignees->firstWhere('id', $userId) : $task->assignees()->find($userId);
+        $type = ($a && $a->pivot->type) ? $a->pivot->type : $task->type;
+        return $this->typePointsInTask($task, $type);
+    }
+
+    public function taskPoints(Task $task): float
+    {
+        $assignees = $task->relationLoaded('assignees') ? $task->assignees : $task->assignees()->get();
+        if ($assignees->isEmpty()) {
+            return $this->typePointsInTask($task, $task->type);
         }
-        $def = TaskType::map()[$plan->work_type] ?? null;
+        return (float) $assignees->sum(fn ($a) => $this->typePointsInTask($task, $a->pivot->type ?: $task->type));
+    }
+
+    /* ---------- خطة المحتوى ---------- */
+
+    private function typePoints(?string $typeKey): float
+    {
+        $def = TaskType::map()[$typeKey] ?? null;
         return $def ? (float) $def['points'] : 0;
     }
 
-    /** نقاط مباشرة لمستخدم في شهر: مهام ينفّذها + صيانة مكتملة + صفوف خطة مُسندة إليه. */
+    /** نقاط مصمّم داخل عنصر خطة (عند إكمال خطوته). */
+    public function contentPointsForUser(ContentPlan $plan, int $userId): float
+    {
+        $d = $plan->relationLoaded('designers') ? $plan->designers->firstWhere('id', $userId) : $plan->designers()->find($userId);
+        if (! $d || $d->pivot->step_status !== 'مكتمل') {
+            return 0;
+        }
+        return $this->typePoints($d->pivot->work_type ?: $plan->work_type);
+    }
+
+    /** نقاط العنصر الكاملة = مجموع خطوات المصمّمين المكتملة. */
+    public function contentPoints(ContentPlan $plan): float
+    {
+        $designers = $plan->relationLoaded('designers') ? $plan->designers : $plan->designers()->get();
+        if ($designers->isNotEmpty()) {
+            return (float) $designers->sum(fn ($d) => $d->pivot->step_status === 'مكتمل'
+                ? $this->typePoints($d->pivot->work_type ?: $plan->work_type) : 0);
+        }
+        // احتياط للصفوف القديمة بلا مصمّمين
+        if (! $plan->work_type || ! in_array($plan->status, self::CREDITED_CONTENT_STATUSES, true)) {
+            return 0;
+        }
+        return $this->typePoints($plan->work_type);
+    }
+
+    /* ---------- إجماليات ---------- */
+
     public function directPoints(User $user, string $month): float
     {
-        $taskPoints = Task::query()->where('user_id', $user->id)->forMonth($month)->get()
-            ->sum(fn (Task $t) => $this->taskPoints($t));
+        $key = $user->id . ':' . $month;
+        if (isset($this->memoDirect[$key])) {
+            return $this->memoDirect[$key];
+        }
+
+        $taskPoints = Task::query()->forMonth($month)
+            ->whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
+            ->with('assignees')->get()
+            ->sum(fn (Task $t) => $this->taskPointsForUser($t, $user->id));
 
         $maintPoints = MaintenanceItem::query()->where('user_id', $user->id)
             ->where('status', 'تم')->forMonth($month)->get()
             ->sum(fn (MaintenanceItem $m) => $m->points());
 
-        $contentPoints = ContentPlan::query()->where('assigned_to', $user->id)->forMonth($month)->get()
-            ->sum(fn (ContentPlan $p) => $this->contentPoints($p));
+        $contentPoints = ContentPlan::query()->forMonth($month)
+            ->whereHas('designers', fn ($q) => $q->where('users.id', $user->id))
+            ->with('designers')->get()
+            ->sum(fn (ContentPlan $p) => $this->contentPointsForUser($p, $user->id));
 
-        return $taskPoints + $maintPoints + $contentPoints;
+        return $this->memoDirect[$key] = $taskPoints + $maintPoints + $contentPoints;
     }
 
     public function designersTotal(string $month): float
     {
-        return User::role(['designer', 'editor'])->get()
+        if (isset($this->memoDesignersTotal[$month])) {
+            return $this->memoDesignersTotal[$month];
+        }
+        $total = User::role(['designer', 'editor'])->get()
             ->sum(fn (User $u) => $this->directPoints($u, $month));
+        return $this->memoDesignersTotal[$month] = $total;
     }
 
     private function creditMode(): string
@@ -80,13 +138,12 @@ class PointsService
         return $user->hasAnyRole(['supervisor', 'manager']);
     }
 
-    /** القاعدة التي تُضرب في نسبة المشرف. */
     public function supervisorBase(User $user, string $month): float
     {
         if ($this->creditMode() === 'assigned') {
-            $tasks = Task::query()->where('supervisor_id', $user->id)->forMonth($month)->get()
+            $tasks = Task::query()->where('supervisor_id', $user->id)->forMonth($month)->with('assignees')->get()
                 ->sum(fn (Task $t) => $this->taskPoints($t));
-            $content = ContentPlan::query()->where('supervisor_id', $user->id)->forMonth($month)->get()
+            $content = ContentPlan::query()->where('supervisor_id', $user->id)->forMonth($month)->with('designers')->get()
                 ->sum(fn (ContentPlan $p) => $this->contentPoints($p));
             return $tasks + $content;
         }
@@ -98,8 +155,7 @@ class PointsService
         if (! $this->isSupervisor($user)) {
             return 0;
         }
-        $share = (float) $user->supervisor_share / 100;
-        return round($share * $this->supervisorBase($user, $month), 1);
+        return round(((float) $user->supervisor_share / 100) * $this->supervisorBase($user, $month), 1);
     }
 
     public function totalPoints(User $user, string $month): float
@@ -112,29 +168,29 @@ class PointsService
         $direct = $this->directPoints($user, $month);
         $credit = $this->supervisorCredit($user, $month);
         return [
-            'direct'         => $direct,
-            'from_designers' => $credit,
-            'share'          => (float) $user->supervisor_share,
-            'mode'           => $this->creditMode(),
-            'total'          => round($direct + $credit, 1),
+            'direct' => $direct, 'from_designers' => $credit,
+            'share' => (float) $user->supervisor_share, 'mode' => $this->creditMode(),
+            'total' => round($direct + $credit, 1),
         ];
     }
 
-    /* ----------- نطاق تاريخي (لوحة التحكم) ----------- */
+    /* ---------- نطاق تاريخي ---------- */
 
     public function directPointsRange(User $user, string $from, string $to): float
     {
-        $taskPoints = Task::query()->where('user_id', $user->id)
-            ->whereBetween('due_date', [$from, $to])->get()
-            ->sum(fn (Task $t) => $this->taskPoints($t));
+        $taskPoints = Task::query()->whereBetween('due_date', [$from, $to])
+            ->whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
+            ->with('assignees')->get()
+            ->sum(fn (Task $t) => $this->taskPointsForUser($t, $user->id));
 
         $maintPoints = MaintenanceItem::query()->where('user_id', $user->id)
             ->where('status', 'تم')->whereBetween('work_date', [$from, $to])->get()
             ->sum(fn (MaintenanceItem $m) => $m->points());
 
-        $contentPoints = ContentPlan::query()->where('assigned_to', $user->id)
-            ->whereBetween('plan_date', [$from, $to])->get()
-            ->sum(fn (ContentPlan $p) => $this->contentPoints($p));
+        $contentPoints = ContentPlan::query()->whereBetween('plan_date', [$from, $to])
+            ->whereHas('designers', fn ($q) => $q->where('users.id', $user->id))
+            ->with('designers')->get()
+            ->sum(fn (ContentPlan $p) => $this->contentPointsForUser($p, $user->id));
 
         return $taskPoints + $maintPoints + $contentPoints;
     }
@@ -153,10 +209,10 @@ class PointsService
             $share = (float) $user->supervisor_share / 100;
             if ($this->creditMode() === 'assigned') {
                 $base = Task::query()->where('supervisor_id', $user->id)
-                    ->whereBetween('due_date', [$from, $to])->get()
+                    ->whereBetween('due_date', [$from, $to])->with('assignees')->get()
                     ->sum(fn (Task $t) => $this->taskPoints($t))
                     + ContentPlan::query()->where('supervisor_id', $user->id)
-                        ->whereBetween('plan_date', [$from, $to])->get()
+                        ->whereBetween('plan_date', [$from, $to])->with('designers')->get()
                         ->sum(fn (ContentPlan $p) => $this->contentPoints($p));
             } else {
                 $base = $this->designersTotalRange($from, $to);
