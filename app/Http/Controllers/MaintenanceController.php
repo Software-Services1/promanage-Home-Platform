@@ -13,16 +13,19 @@ class MaintenanceController extends Controller
     {
         $month = $this->activeMonth($request);
         $rows  = MaintenanceItem::with('user')->forMonth($month)->orderByDesc('work_date')->get();
+        $assignees = \App\Models\User::where('is_active', true)->get();
 
         return view('maintenance.index', [
             'month' => $month, 'rows' => $rows, 'types' => WorkTypes::MAINTENANCE,
-            'statuses' => WorkTypes::MAINTENANCE_STATUSES,
+            'statuses' => WorkTypes::MAINTENANCE_STATUSES, 'assignees' => $assignees,
         ]);
     }
 
     public function store(MaintenanceRequest $request)
     {
-        MaintenanceItem::create($request->validated() + ['user_id' => $request->user()->id]);
+        $data = $request->validated();
+        $data['user_id'] = $data['user_id'] ?? $request->user()->id;
+        MaintenanceItem::create($data);
         return back()->with('ok', 'تمت إضافة العملية.');
     }
 

@@ -14,7 +14,7 @@ class ContentPlanRequest extends FormRequest
     {
         return [
             'platform'       => ['required', Rule::in(WorkTypes::PLATFORMS)],
-            'company_name'   => ['nullable', 'string', 'max:120'],
+            'company_name'   => ['nullable', Rule::in(WorkTypes::COMPANIES)],
             'plan_date'      => ['required', 'date'],
             'plan_time'      => ['nullable', 'string'],
             'content_type'   => ['required', Rule::in(WorkTypes::CONTENT_TYPES)],

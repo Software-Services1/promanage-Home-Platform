@@ -1,6 +1,15 @@
 <div class="grid grid-cols-2 gap-3">
-  <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">اسم الشركة</label>
-    <input name="company_name" x-model="form.company_name" placeholder="اسم العميل/الشركة" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm"></div>
+  <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1.5 block">الشركة</label>
+    <div class="grid grid-cols-2 gap-2">
+      @foreach($companies as $co)
+        <label class="flex items-center gap-2 text-sm rounded-xl px-3 py-2.5 cursor-pointer border-2 transition"
+               :class="form.company_name === @js($co) ? 'border-brand bg-violet-50 font-bold' : 'border-line bg-canvas hover:border-brand/40'">
+          <input type="radio" name="company_name" value="{{ $co }}" x-model="form.company_name" class="accent-brand w-4 h-4">
+          {{ $co }}
+        </label>
+      @endforeach
+    </div>
+  </div>
   <div><label class="text-xs font-semibold text-muted mb-1 block">المنصة</label>
     <select name="platform" x-model="form.platform" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($platforms as $p)<option>{{ $p }}</option>@endforeach</select></div>
   <div><label class="text-xs font-semibold text-muted mb-1 block">التاريخ</label>

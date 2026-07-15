@@ -17,6 +17,7 @@ class MaintenanceRequest extends FormRequest
             'type'      => ['required', Rule::in(array_keys(WorkTypes::MAINTENANCE))],
             'work_date' => ['required', 'date'],
             'status'    => ['required', Rule::in(WorkTypes::MAINTENANCE_STATUSES)],
+            'user_id'   => ['nullable', 'exists:users,id'],
         ];
     }
 }

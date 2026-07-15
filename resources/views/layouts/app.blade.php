@@ -7,6 +7,51 @@
 <title>@yield('title', 'ProManage Flow')</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script>
+  // مكوّن موحّد: فلترة فورية + ترقيم صفحات في المتصفح (بلا إعادة تحميل)
+  function boardFilter(opts){
+    opts = opts || {};
+    return {
+      q:{}, page:1, perPage: opts.perPage || 12, contains: opts.contains || [], flt:false,
+      total:0, pages:1, rows:[],
+      init(){
+        this.rows = Array.from(this.$root.querySelectorAll('[data-row]'));
+        this.total = this.rows.length;
+        this.apply();
+      },
+      rowMatches(el){
+        for (const k of Object.keys(this.q)){
+          const v = (this.q[k] ?? '').toString().trim();
+          if (v === '') continue;
+          const d = (el.dataset[k] ?? '').toString();
+          if (this.contains.includes(k)) { if (!d.includes(v)) return false; }
+          else if (d !== v) return false;
+        }
+        return true;
+      },
+      apply(){
+        const matched = this.rows.filter(el => this.rowMatches(el));
+        this.total = matched.length;
+        this.pages = Math.max(1, Math.ceil(this.total / this.perPage));
+        if (this.page > this.pages) this.page = this.pages;
+        const start = (this.page - 1) * this.perPage, end = start + this.perPage;
+        this.rows.forEach(el => { el.style.display = 'none'; });
+        matched.forEach((el, i) => { el.style.display = (i >= start && i < end) ? '' : 'none'; });
+      },
+      onFilter(){ this.page = 1; this.apply(); },
+      reset(){ for (const k of Object.keys(this.q)) this.q[k] = ''; this.page = 1; this.apply(); },
+      go(p){ if (p >= 1 && p <= this.pages){ this.page = p; this.apply(); } },
+      get from(){ return this.total ? (this.page - 1) * this.perPage + 1 : 0; },
+      get to(){ return Math.min(this.total, this.page * this.perPage); },
+      get pageList(){
+        const a = [], span = 2;
+        let s = Math.max(1, this.page - span), e = Math.min(this.pages, this.page + span);
+        for (let i = s; i <= e; i++) a.push(i);
+        return a;
+      },
+    };
+  }
+</script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
 tailwind.config = { theme: { extend: {

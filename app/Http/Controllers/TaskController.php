@@ -15,39 +15,20 @@ class TaskController extends Controller
     {
         $month = $this->activeMonth($request);
         $user  = $request->user();
-        $filters = [
-            'user_id' => $request->query('user_id'),
-            'type'    => $request->query('type'),
-            'stage'   => $request->query('stage'),
-            'date'    => $request->query('date'),
-        ];
 
         $tasks = Task::with(['user','supervisor','assignees'])->visibleTo($user)->forMonth($month)
-            ->when($filters['user_id'], fn ($q) => $q->whereHas('assignees', fn ($a) => $a->where('users.id', $filters['user_id'])))
-            ->when($filters['type'], fn ($q) => $q->where('type', $filters['type']))
-            ->when($filters['stage'], fn ($q) => $q->where('stage', $filters['stage']))
-            ->when($filters['date'], fn ($q) => $q->whereDate('due_date', $filters['date']))
-            ->orderByDesc('due_date')->get()
+            ->orderByDesc('due_date')->orderByDesc('id')->get()
             ->map(function (Task $t) use ($points) {
                 $t->setAttribute('computed_points', $points->taskPoints($t));
                 return $t;
             });
-
-        // تجميع في أعمدة الكانبان حسب كل مرحلة (للسحب والإفلات)
-        $groups = [];
-        foreach (WorkTypes::STAGES as $st) {
-            $groups[$st] = [];
-        }
-        foreach ($tasks as $t) {
-            $groups[$t->stage][] = $t;
-        }
 
         $assignees = User::where('is_active', true)->get();
         $supervisors = User::role(['supervisor', 'manager', 'admin'])->get();
         $taskTypes = \App\Models\TaskType::where('is_active', true)->orderBy('label')->get();
 
         return view('tasks.index', [
-            'month' => $month, 'groups' => $groups, 'stages' => WorkTypes::STAGES, 'filters' => $filters,
+            'month' => $month, 'tasks' => $tasks, 'stages' => WorkTypes::STAGES,
             'taskTypes' => $taskTypes, 'assignees' => $assignees, 'supervisors' => $supervisors,
         ]);
     }

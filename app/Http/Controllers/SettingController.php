@@ -44,6 +44,7 @@ class SettingController extends Controller
             'bonus_pct'     => Setting::get('payroll_bonus_pct', 5),
             'deduction_pct' => Setting::get('payroll_deduction_pct', 20),
             'threshold'     => Setting::get('payroll_threshold'),
+            'creative_pct'  => Setting::get('creative_bonus_pct', 50),
         ];
         return view('settings.index', compact('mode', 'cardFields', 'allCardFields', 'payroll'));
     }
@@ -57,6 +58,7 @@ class SettingController extends Controller
             'payroll_bonus_pct'      => ['required', 'numeric', 'min:0', 'max:100'],
             'payroll_deduction_pct'  => ['required', 'numeric', 'min:0', 'max:100'],
             'payroll_threshold'      => ['nullable', 'integer', 'min:0'],
+            'creative_bonus_pct'     => ['required', 'numeric', 'min:0', 'max:200'],
         ]);
 
         Setting::put('supervisor_credit_mode', $data['supervisor_credit_mode']);
@@ -64,6 +66,7 @@ class SettingController extends Controller
         Setting::put('payroll_bonus_pct', $data['payroll_bonus_pct']);
         Setting::put('payroll_deduction_pct', $data['payroll_deduction_pct']);
         Setting::put('payroll_threshold', $data['payroll_threshold'] ?: null);
+        Setting::put('creative_bonus_pct', $data['creative_bonus_pct']);
 
         return back()->with('ok', 'تم حفظ إعدادات النظام.');
     }

@@ -14,8 +14,17 @@
   $current = $p->currentDesigner();
   $editObj = "{ id:{$p->id}, platform:".json_encode($p->platform,JSON_UNESCAPED_UNICODE).", company_name:".json_encode($p->company_name,JSON_UNESCAPED_UNICODE).", plan_date:".json_encode(optional($p->plan_date)->format('Y-m-d')).", plan_time:".json_encode($p->plan_time).", content_type:".json_encode($p->content_type,JSON_UNESCAPED_UNICODE).", post_type:".json_encode($p->post_type,JSON_UNESCAPED_UNICODE).", status:".json_encode($p->status,JSON_UNESCAPED_UNICODE).", assigned_to:".($p->assigned_to ?? 'null').", supervisor_id:".($p->supervisor_id ?? 'null').", work_type:".json_encode($p->work_type,JSON_UNESCAPED_UNICODE).", design_content:".json_encode($p->design_content,JSON_UNESCAPED_UNICODE).", design_text:".json_encode($p->design_text,JSON_UNESCAPED_UNICODE).", caption:".json_encode($p->caption,JSON_UNESCAPED_UNICODE).", post_text:".json_encode($p->post_text,JSON_UNESCAPED_UNICODE).", reference_link:".json_encode($p->reference_link).", notes:".json_encode($p->notes,JSON_UNESCAPED_UNICODE).", designers:".json_encode($dz)." }";
   $viewObj = "{ id:{$p->id}, owner:".($p->assigned_to===auth()->id() ? 'true':'false').", platform:".json_encode($p->platform,JSON_UNESCAPED_UNICODE).", date:".json_encode(optional($p->plan_date)->format('Y-m-d')).", content_type:".json_encode($p->content_type,JSON_UNESCAPED_UNICODE).", post_type:".json_encode($p->post_type,JSON_UNESCAPED_UNICODE).", status:".json_encode($p->status,JSON_UNESCAPED_UNICODE).", caption:".json_encode($p->caption,JSON_UNESCAPED_UNICODE).", post_text:".json_encode($p->post_text,JSON_UNESCAPED_UNICODE).", design_content:".json_encode($p->design_content,JSON_UNESCAPED_UNICODE).", design_text:".json_encode($p->design_text,JSON_UNESCAPED_UNICODE).", notes:".json_encode($p->notes,JSON_UNESCAPED_UNICODE).", reference_link:".json_encode($p->reference_link).", assignee:".json_encode(optional($p->assignee)->name,JSON_UNESCAPED_UNICODE)." }";
+  $designerNames = $p->designers->pluck('name')->join('، ');
+  $wtLabel = \App\Models\TaskType::map()[$p->work_type]['label'] ?? '';
 ?>
-<div class="bg-white rounded-2xl border border-line shadow-soft p-3.5 hover:shadow-lift hover:border-brand/30 transition">
+<div data-row
+     data-company="<?php echo e($p->company_name); ?>"
+     data-platform="<?php echo e($p->platform); ?>"
+     data-user="<?php echo e($designerNames ?: optional($p->assignee)->name); ?>"
+     data-worktype="<?php echo e($wtLabel); ?>"
+     data-date="<?php echo e(optional($p->plan_date)->format('Y-m-d')); ?>"
+     data-status="<?php echo e($p->status); ?>"
+     class="bg-white rounded-2xl border border-line shadow-soft p-3.5 hover:shadow-lift hover:border-brand/30 transition">
   <div class="flex items-start justify-between gap-2">
     <div class="min-w-0">
       <div class="font-bold ff-display text-sm truncate"><?php echo e($p->company_name ?: $p->platform); ?></div>

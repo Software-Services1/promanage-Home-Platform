@@ -15,7 +15,7 @@
   $canUpdate  = auth()->user()->can('update content');
   $canDelete  = auth()->user()->can('delete content');
   $canContribute = auth()->user()->can('add content note') || auth()->user()->can('update content status') || auth()->user()->can('upload design');
-  $addSeed = "form={ platform:'إنستقرام', company_name:'', plan_date:'".$month."-01', plan_time:'19:00', content_type:'تعليمي', post_type:'منشور', status:'فكرة', assigned_to:null, design_content:'', design_text:'', caption:'', post_text:'', reference_link:'', notes:'', work_type:'', supervisor_id:null, designers:[{user_id:'',work_type:''}] }; add=true";
+  $addSeed = "form={ platform:'إنستقرام', company_name:'إيزي هوم', plan_date:'".$month."-01', plan_time:'19:00', content_type:'تعليمي', post_type:'منشور', status:'فكرة', assigned_to:null, design_content:'', design_text:'', caption:'', post_text:'', reference_link:'', notes:'', work_type:'', supervisor_id:null, designers:[{user_id:'',work_type:''}] }; add=true";
 ?>
 <div x-data="{ add:false, reject:false, edit:null, view:null, form:{}, vrow:{} }">
   <div class="flex items-center gap-2 mb-3 flex-wrap">
@@ -25,14 +25,14 @@
     <span class="text-xs text-muted"><?php echo e($monthCount); ?> عنصر</span>
   </div>
 
-  <div x-data="{ filters: <?php echo e(($filters['company'] || $filters['date'] || $filters['assigned_to'] || $filters['work_type'] || $platform!=='all') ? 'true':'false'); ?> }" class="mb-4">
+  <div x-data="boardFilter({perPage:24, contains:['company','user']})">
     <div class="flex flex-wrap items-center gap-2 mb-3">
-      <button type="button" x-on:click="filters=!filters" class="inline-flex items-center gap-2 bg-white border border-line rounded-xl px-3.5 py-2.5 text-sm font-semibold text-ink shadow-soft hover:border-brand/40">
+      <button type="button" x-on:click.stop="flt=!flt" class="inline-flex items-center gap-2 bg-white border border-line rounded-xl px-3.5 py-2.5 text-sm font-semibold text-ink shadow-soft hover:border-brand/40">
         <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>
         الفلاتر
-        <?php $active = collect($filters)->filter(fn($v)=>$v!==null && $v!=='')->count() + ($platform!=='all'?1:0); ?>
-        <?php if($active): ?><span class="bg-brand text-white text-[10px] rounded-full w-5 h-5 grid place-items-center tnum"><?php echo e($active); ?></span><?php endif; ?>
+        <span x-show="Object.values(q).some(v=>v)" class="bg-brand text-white text-[10px] rounded-full min-w-5 h-5 px-1 grid place-items-center tnum" x-text="Object.values(q).filter(v=>v).length"></span>
       </button>
+      <span class="text-xs text-muted"><span class="tnum" x-text="total"></span> عنصر</span>
       <div class="flex-1"></div>
       <?php if($canApprove && $monthCount>0): ?>
         <label class="hidden sm:flex items-center gap-1.5 text-xs text-muted bg-white border border-line rounded-xl px-3 py-2.5 cursor-pointer">
@@ -44,65 +44,52 @@
         <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> عنصر جديد</button><?php endif; ?>
     </div>
 
-    <form method="GET" x-show="filters" x-cloak x-transition class="bg-white rounded-2xl border border-line shadow-soft p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div x-show="flt" x-cloak x-transition x-on:click.outside="flt=false" class="relative bg-white rounded-2xl border border-line shadow-soft p-4 pt-11 grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+      <button type="button" x-on:click="flt=false" title="إغلاق" class="absolute top-2.5 left-2.5 w-8 h-8 rounded-lg grid place-items-center text-muted hover:text-rose-600 hover:bg-rose-50">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
       <div class="col-span-2 md:col-span-1"><label class="text-[11px] font-semibold text-muted mb-1 block">اسم الشركة</label>
-        <input name="company" value="<?php echo e($filters['company']); ?>" placeholder="بحث..." class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm"></div>
+        <input x-model="q.company" x-on:input="onFilter()" placeholder="بحث..." class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm"></div>
       <div><label class="text-[11px] font-semibold text-muted mb-1 block">التاريخ</label>
-        <input name="date" type="date" value="<?php echo e($filters['date']); ?>" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm tnum"></div>
+        <input x-model="q.date" x-on:change="onFilter()" type="date" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm tnum"></div>
       <div><label class="text-[11px] font-semibold text-muted mb-1 block">المصمم</label>
-        <select name="assigned_to" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
+        <select x-model="q.user" x-on:change="onFilter()" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
           <option value="">الكل</option>
-          <?php $__currentLoopData = $assignees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($a->id); ?>" <?php if($filters['assigned_to']==$a->id): echo 'selected'; endif; ?>><?php echo e($a->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+          <?php $__currentLoopData = $assignees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($a->name); ?>"><?php echo e($a->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select></div>
       <div><label class="text-[11px] font-semibold text-muted mb-1 block">نوع العمل</label>
-        <select name="work_type" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
+        <select x-model="q.worktype" x-on:change="onFilter()" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
           <option value="">الكل</option>
-          <?php $__currentLoopData = $workTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $wt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($wt->key); ?>" <?php if($filters['work_type']===$wt->key): echo 'selected'; endif; ?>><?php echo e($wt->label); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+          <?php $__currentLoopData = $workTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $wt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($wt->label); ?>"><?php echo e($wt->label); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select></div>
       <div><label class="text-[11px] font-semibold text-muted mb-1 block">المنصة</label>
-        <select name="platform" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
-          <option value="all">الكل</option>
-          <?php $__currentLoopData = $platforms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pf): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option <?php if($platform===$pf): echo 'selected'; endif; ?>><?php echo e($pf); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        <select x-model="q.platform" x-on:change="onFilter()" class="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm">
+          <option value="">الكل</option>
+          <?php $__currentLoopData = $platforms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pf): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option><?php echo e($pf); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select></div>
       <div class="col-span-2 md:col-span-5 flex gap-2 justify-end">
-        <a href="<?php echo e(route('content.index')); ?>" class="px-4 py-2 rounded-xl text-sm font-semibold text-muted hover:bg-canvas">تصفير</a>
-        <button class="px-5 py-2 rounded-xl text-sm font-bold bg-brand text-white hover:bg-brandd">تطبيق</button>
+        <button type="button" x-on:click="reset()" class="px-4 py-2 rounded-xl text-sm font-semibold text-muted hover:bg-canvas">تصفير</button>
       </div>
-    </form>
-  </div>
+    </div>
 
-  <?php if($monthCount===0): ?>
-    <div class="bg-white rounded-2xl border border-line shadow-soft grid place-items-center text-center py-16 px-6">
-      <div class="w-14 h-14 rounded-2xl bg-brand/10 grid place-items-center text-brand mb-3">
-        <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4h18v17H3zM3 9h18M8 2v4M16 2v4"/></svg></div>
-      <div class="ff-display font-bold">لا توجد خطة لشهر <?php echo e($monthLabel($month)); ?> بعد</div>
-      <div class="text-muted text-sm mt-1 mb-4">ابدأ بإضافة أول عنصر، أو انتقل لشهر آخر من الأعلى.</div>
-      <?php if($canCreate): ?><button x-on:click="<?php echo e($addSeed); ?>" class="bg-brand hover:bg-brandd text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lift">إضافة أول عنصر</button><?php else: ?><span class="text-xs text-muted">لا توجد عناصر مسندة إليك في هذا الشهر.</span><?php endif; ?>
-    </div>
-  <?php else: ?>
-    <?php $byStatus = collect($rows)->groupBy('status'); ?>
-    <div class="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x">
-      <?php $__currentLoopData = $statuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $st): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-        <?php $items = $byStatus[$st] ?? collect(); ?>
-        <div class="w-[280px] sm:w-[300px] shrink-0 snap-start">
-          <div class="flex items-center justify-between mb-2.5 px-1">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full <?php echo e($statusDot[$st] ?? 'bg-gray-300'); ?>"></span>
-              <h4 class="ff-display font-bold text-sm"><?php echo e($st); ?></h4>
-            </div>
-            <span class="text-xs bg-white border border-line rounded-full px-2 py-0.5 tnum text-muted"><?php echo e($items->count()); ?></span>
-          </div>
-          <div class="space-y-3 bg-canvas/50 rounded-2xl p-2 min-h-[80px] border border-line/60">
-            <?php $__empty_1 = true; $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-              <?php echo $__env->make('content._card', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-              <div class="text-center text-[11px] text-muted py-6">—</div>
-            <?php endif; ?>
-          </div>
-        </div>
-      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-    </div>
-  <?php endif; ?>
+    <?php if($monthCount===0): ?>
+      <div class="bg-white rounded-2xl border border-line shadow-soft grid place-items-center text-center py-16 px-6">
+        <div class="w-14 h-14 rounded-2xl bg-brand/10 grid place-items-center text-brand mb-3">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4h18v17H3zM3 9h18M8 2v4M16 2v4"/></svg></div>
+        <div class="ff-display font-bold">لا توجد خطة لشهر <?php echo e($monthLabel($month)); ?> بعد</div>
+        <div class="text-muted text-sm mt-1 mb-4">ابدأ بإضافة أول عنصر، أو انتقل لشهر آخر من الأعلى.</div>
+        <?php if($canCreate): ?><button x-on:click="<?php echo e($addSeed); ?>" class="bg-brand hover:bg-brandd text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lift">إضافة أول عنصر</button><?php else: ?><span class="text-xs text-muted">لا توجد عناصر مسندة إليك في هذا الشهر.</span><?php endif; ?>
+      </div>
+    <?php else: ?>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <?php $__currentLoopData = $rows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+          <?php echo $__env->make('content._card', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+      </div>
+      <div x-show="total===0" class="text-center text-sm text-muted py-10">لا توجد عناصر مطابقة للفلاتر.</div>
+      <?php echo $__env->make('partials.pager', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+    <?php endif; ?>
+  </div>
 
   <!-- نافذة إضافة صف -->
   <div x-cloak x-show="add" class="fixed inset-0 z-50 grid place-items-center p-4">

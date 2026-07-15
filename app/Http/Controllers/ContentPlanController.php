@@ -13,35 +13,23 @@ class ContentPlanController extends Controller
 {
     public function index(Request $request)
     {
-        $month    = $this->activeMonth($request);
-        $platform = $request->query('platform', 'all');
-        $filters  = [
-            'company'     => trim((string) $request->query('company', '')),
-            'date'        => $request->query('date'),
-            'assigned_to' => $request->query('assigned_to'),
-            'work_type'   => $request->query('work_type'),
-        ];
+        $month = $this->activeMonth($request);
+        $user  = $request->user();
 
-        $user = $request->user();
-
-        $rows = ContentPlan::with(['assignee','supervisor'])->visibleTo($user)->forMonth($month)
-            ->when($platform !== 'all', fn ($q) => $q->where('platform', $platform))
-            ->when($filters['company'] !== '', fn ($q) => $q->where('company_name', 'like', '%' . $filters['company'] . '%'))
-            ->when($filters['date'], fn ($q) => $q->whereDate('plan_date', $filters['date']))
-            ->when($filters['assigned_to'], fn ($q) => $q->where('assigned_to', $filters['assigned_to']))
-            ->when($filters['work_type'], fn ($q) => $q->where('work_type', $filters['work_type']))
+        $rows = ContentPlan::with(['assignee', 'supervisor', 'designers'])->visibleTo($user)->forMonth($month)
             ->orderBy('plan_date')->get();
 
-        $monthCount = ContentPlan::visibleTo($user)->forMonth($month)->count();
+        $monthCount  = $rows->count();
         $assignees   = User::role(['designer', 'editor'])->get();
         $supervisors = User::role(['supervisor', 'manager'])->get();
         $workTypes   = \App\Models\TaskType::where('is_active', true)->orderBy('label')->get();
 
         return view('content.index', [
-            'month' => $month, 'rows' => $rows, 'platform' => $platform, 'filters' => $filters,
+            'month' => $month, 'rows' => $rows,
             'monthCount' => $monthCount, 'assignees' => $assignees,
             'supervisors' => $supervisors, 'workTypes' => $workTypes,
             'cardFields' => \App\Http\Controllers\SettingController::cardFields(),
+            'companies' => WorkTypes::COMPANIES,
             'platforms' => WorkTypes::PLATFORMS, 'contentTypes' => WorkTypes::CONTENT_TYPES,
             'postTypes' => WorkTypes::POST_TYPES, 'statuses' => WorkTypes::PLAN_STATUSES,
         ]);

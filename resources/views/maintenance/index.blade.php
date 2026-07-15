@@ -11,7 +11,7 @@
     <div class="flex gap-2 text-xs flex-wrap">
       @foreach($types as $k=>$v)<span class="bg-white border border-line rounded-lg px-2.5 py-1.5"><b class="text-brand tnum">{{ $v['points'] }}</b> {{ $v['label'] }}</span>@endforeach
     </div>
-    <button x-on:click="mode='create'; form={ type:'minor_design', work_date:'{{ $month }}-01', status:'قيد التنفيذ' }; open=true"
+    <button x-on:click="mode='create'; form={ type:'minor_design', work_date:'{{ $month }}-01', status:'قيد التنفيذ', user_id:'' }; open=true"
             class="inline-flex items-center gap-2 bg-brand hover:bg-brandd text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lift">
       <svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> عملية صيانة</button>
   </div>
@@ -37,7 +37,7 @@
             <td class="p-4">
               <div class="flex items-center gap-1 justify-end">
                 <button type="button" class="w-8 h-8 rounded-lg grid place-items-center text-muted hover:text-brand hover:bg-violet-50" title="تعديل"
-                  x-on:click="mode='edit'; form={ id:{{ $m->id }}, title:@js($m->title), type:@js($m->type), work_date:@js($m->work_date->format('Y-m-d')), status:@js($m->status) }; open=true">
+                  x-on:click="mode='edit'; form={ id:{{ $m->id }}, title:@js($m->title), type:@js($m->type), work_date:@js($m->work_date->format('Y-m-d')), status:@js($m->status), user_id:{{ $m->user_id ?? "''" }} }; open=true">
                   <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
                 <form method="POST" action="{{ route('maintenance.destroy',$m) }}" onsubmit="return confirm('حذف هذه العملية؟')">@csrf @method('DELETE')
                   <button class="w-8 h-8 rounded-lg grid place-items-center text-muted hover:text-rose-600 hover:bg-rose-50" title="حذف">
@@ -69,6 +69,11 @@
           <input name="work_date" type="date" x-model="form.work_date" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm tnum"></div>
         <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">الحالة</label>
           <select name="status" x-model="form.status" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">@foreach($statuses as $s)<option>{{ $s }}</option>@endforeach</select></div>
+        <div class="col-span-2"><label class="text-xs font-semibold text-muted mb-1 block">المكلَّف بالمهمة</label>
+          <select name="user_id" x-model="form.user_id" class="w-full bg-canvas border border-line rounded-xl px-3 py-2.5 text-sm">
+            <option value="">— أنا ({{ auth()->user()->name }}) —</option>
+            @foreach($assignees as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach
+          </select></div>
       </div>
       <div class="flex gap-2 justify-end pt-1">
         <button type="button" x-on:click="open=false" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted hover:bg-canvas">إلغاء</button>

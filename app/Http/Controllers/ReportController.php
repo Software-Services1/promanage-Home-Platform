@@ -57,9 +57,9 @@ class ReportController extends Controller
             ],
             'tasks' => [
                 'head' => ['المهمة', 'النوع', 'الموظف', 'المرحلة', 'النقاط', 'تأخّر'],
-                'rows' => Task::with('user')->forMonth($month)
-                    ->when($userId, fn ($q) => $q->where('user_id', $userId))->get()
-                    ->map(fn ($t) => [$t->title, $t->typeLabel(), $t->user->name, $t->stage, $points->taskPoints($t), $t->is_late ? 'نعم' : 'لا'])->all(),
+                'rows' => Task::with(['user', 'assignees'])->forMonth($month)
+                    ->when($userId, fn ($q) => $q->whereHas('assignees', fn ($a) => $a->where('users.id', $userId)))->get()
+                    ->map(fn ($t) => [$t->title, $t->typeLabel(), $t->assignees->pluck('name')->join('، ') ?: optional($t->user)->name, $t->stage, $points->taskPoints($t), $t->is_late ? 'نعم' : 'لا'])->all(),
             ],
             'maint' => [
                 'head' => ['العملية', 'النوع', 'التاريخ', 'النقاط', 'الحالة'],

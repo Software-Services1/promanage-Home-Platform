@@ -34,9 +34,17 @@ class PointsService
             return 0;
         }
         $points = (float) $def['points'];
-        if ($task->is_creative && ! empty($def['bonus'])) {
-            $points += $def['bonus'];
+
+        // الإبداع: بونص مخصّص للنوع إن وُجد، وإلا نسبة عامة من الإعدادات (افتراضي 50%)
+        if ($task->is_creative) {
+            $bonus = (float) ($def['bonus'] ?? 0);
+            if ($bonus <= 0) {
+                $pct = (float) Setting::get('creative_bonus_pct', 50);
+                $bonus = $points * ($pct / 100);
+            }
+            $points += $bonus;
         }
+
         if ($task->is_late) {
             $points /= 2;
         }
@@ -67,25 +75,35 @@ class PointsService
         return $def ? (float) $def['points'] : 0;
     }
 
-    /** نقاط مصمّم داخل عنصر خطة (عند إكمال خطوته). */
+    /** نقاط مصمّم داخل عنصر خطة: تُحتسب عند إكمال خطوته أو عند بلوغ العنصر حالة مُعتمَدة. */
     public function contentPointsForUser(ContentPlan $plan, int $userId): float
     {
         $d = $plan->relationLoaded('designers') ? $plan->designers->firstWhere('id', $userId) : $plan->designers()->find($userId);
-        if (! $d || $d->pivot->step_status !== 'مكتمل') {
+        if (! $d) {
+            // احتياط: المصمّم المُسند مباشرة دون جدول الخطوات
+            if ($plan->assigned_to === $userId && in_array($plan->status, self::CREDITED_CONTENT_STATUSES, true)) {
+                return $this->typePoints($plan->work_type);
+            }
             return 0;
         }
+
+        $stepDone  = $d->pivot->step_status === 'مكتمل';
+        $planDone  = in_array($plan->status, self::CREDITED_CONTENT_STATUSES, true);
+
+        if (! $stepDone && ! $planDone) {
+            return 0;
+        }
+
         return $this->typePoints($d->pivot->work_type ?: $plan->work_type);
     }
 
-    /** نقاط العنصر الكاملة = مجموع خطوات المصمّمين المكتملة. */
+    /** نقاط العنصر الكاملة = مجموع نقاط المصمّمين المستحقّة. */
     public function contentPoints(ContentPlan $plan): float
     {
         $designers = $plan->relationLoaded('designers') ? $plan->designers : $plan->designers()->get();
         if ($designers->isNotEmpty()) {
-            return (float) $designers->sum(fn ($d) => $d->pivot->step_status === 'مكتمل'
-                ? $this->typePoints($d->pivot->work_type ?: $plan->work_type) : 0);
+            return (float) $designers->sum(fn ($d) => $this->contentPointsForUser($plan, $d->id));
         }
-        // احتياط للصفوف القديمة بلا مصمّمين
         if (! $plan->work_type || ! in_array($plan->status, self::CREDITED_CONTENT_STATUSES, true)) {
             return 0;
         }
