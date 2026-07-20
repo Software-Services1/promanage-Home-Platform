@@ -1,0 +1,23 @@
+[2026-07-19 14:45:30] production.ERROR: file_get_contents(D:\markting\promanage\.env): Failed to open stream: No such file or directory {"exception":"[object] (ErrorException(code: 0): file_get_contents(D:\\markting\\promanage\\.env): Failed to open stream: No such file or directory at D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Console/KeyGenerateCommand.php:100)
+[stacktrace]
+#0 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php(258): Illuminate/Foundation/Bootstrap/HandleExceptions->handleError(2, 'file_get_conten...', 'D://markting//pro...', 100)
+#1 [internal function]: Illuminate/Foundation/Bootstrap/HandleExceptions->Illuminate/Foundation/Bootstrap/{closure}(2, 'file_get_conten...', 'D://markting//pro...', 100)
+#2 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Console/KeyGenerateCommand.php(100): file_get_contents('D://markting//pro...')
+#3 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Console/KeyGenerateCommand.php(82): Illuminate/Foundation/Console/KeyGenerateCommand->writeNewEnvironmentFileWith('base64:TZlRXicn...')
+#4 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Console/KeyGenerateCommand.php(47): Illuminate/Foundation/Console/KeyGenerateCommand->setKeyInEnvironmentFile('base64:TZlRXicn...')
+#5 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate/Foundation/Console/KeyGenerateCommand->handle()
+#6 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#7 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#8 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#9 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#10 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#11 D:/markting/promanage/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#12 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#13 D:/markting/promanage/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#14 D:/markting/promanage/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Illuminate/Foundation/Console/KeyGenerateCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#15 D:/markting/promanage/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#16 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#17 D:/markting/promanage/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#18 D:/markting/promanage/artisan(13): Illuminate/Foundation/Application->handleCommand(Object(Symfony/Component/Console/Input/ArgvInput))
+#19 {main}
+"} 

@@ -20,10 +20,10 @@ class DemoDataSeeder extends Seeder
     public function run(): void
     {
         $this->u = [
-            'admin'      => User::where('email', 'mohammed@easyhome.sa')->first()->id,
-            'supervisor' => User::where('email', 'moataz@easyhome.sa')->first()->id,
-            'designer'   => User::where('email', 'abdullah@easyhome.sa')->first()->id,
-            'editor'     => User::where('email', 'ashraf@easyhome.sa')->first()->id,
+            'admin'      => User::where('email', 'mohammed@fikra.sa')->first()->id,
+            'supervisor' => User::where('email', 'moataz@fikra.sa')->first()->id,
+            'designer'   => User::where('email', 'abdullah@fikra.sa')->first()->id,
+            'editor'     => User::where('email', 'ashraf@fikra.sa')->first()->id,
         ];
 
         $cur  = Carbon::now()->startOfMonth();

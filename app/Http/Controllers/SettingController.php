@@ -65,7 +65,7 @@ class SettingController extends Controller
         Setting::put('content_card_fields', json_encode(array_values($data['content_card_fields'] ?? self::DEFAULT_CARD_FIELDS)));
         Setting::put('payroll_bonus_pct', $data['payroll_bonus_pct']);
         Setting::put('payroll_deduction_pct', $data['payroll_deduction_pct']);
-        Setting::put('payroll_threshold', $data['payroll_threshold'] ?: null);
+        Setting::put('payroll_threshold', ($data['payroll_threshold'] ?? null) ?: null);
         Setting::put('creative_bonus_pct', $data['creative_bonus_pct']);
 
         return back()->with('ok', 'تم حفظ إعدادات النظام.');
